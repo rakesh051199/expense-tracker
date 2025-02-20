@@ -3,6 +3,7 @@ import { Construct } from "constructs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import path = require("path");
 
 export class ExpenseTrackerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -21,8 +22,8 @@ export class ExpenseTrackerStack extends cdk.Stack {
     // ✅ Create a Lambda function
     const expenseLambda = new lambda.Function(this, "ExpenseLambda", {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda"),
+      handler: "handlers/test.handler",
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../backend/src")),
       environment: {
         TRANSACTIONS_TABLE: transactionsTable.tableName,
       },
