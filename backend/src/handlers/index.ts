@@ -1,0 +1,129 @@
+import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
+import logger from "../utils/logger";
+import { v4 as uuidv4 } from "uuid";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
+
+const dynamoDbClient = new DynamoDBClient({ region: "us-west-2" });
+const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
+const TableName = process.env.TRANSACTIONS_TABLE || "";
+
+interface Transaction {
+  userId: string;
+  transactionId: string;
+  createdAt: string;
+  type: "expense" | "income" | "transfer";
+  amount: number;
+  category: string;
+  description: string;
+  sourceAccount?: string;
+  destinationAccount?: string;
+}
+
+export const expenseHandler = async (
+  event: APIGatewayEvent,
+): Promise<APIGatewayProxyResult> => {
+  logger.info("Expense Handler got invoked");
+  try {
+    switch (event.httpMethod) {
+      case "POST":
+        return await createTransaction(event);
+      case "GET":
+        return await getAllTransactions(event);
+      default:
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ message: "Bad request" }),
+        };
+    }
+  } catch (error) {
+    logger.error("Error in expenseHandler", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: "Internal server error" }),
+    };
+  }
+};
+
+async function createTransaction(
+  event: APIGatewayEvent,
+): Promise<APIGatewayProxyResult> {
+  const body: Partial<Transaction> = JSON.parse(event.body || "{}");
+  if (!body.amount || !body.type || !body.category || !body.description) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "Missing required fields" }),
+    };
+  }
+  const transaction: Transaction = {
+    userId: body.userId || "user-1",
+    transactionId: `txn-${uuidv4()}`,
+    type: body.type,
+    amount: body.amount,
+    category: body.category,
+    description: body.description || "",
+    createdAt: new Date().toISOString(),
+    sourceAccount: body.sourceAccount,
+    destinationAccount: body.destinationAccount,
+  };
+
+  await dynamoDb.send(
+    new PutCommand({
+      TableName: TableName,
+      Item: transaction,
+    }),
+  );
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: "Transaction added successfully" }),
+  };
+}
+
+async function getAllTransactions(
+  event: APIGatewayEvent,
+): Promise<APIGatewayProxyResult> {
+  const userId = event.queryStringParameters?.userId;
+  const type = event.queryStringParameters?.type; // Optional filter (expense, income, transfer)
+  const month = event.queryStringParameters?.month; // Optional filter (1-12)
+  const year = event.queryStringParameters?.year; // Optional filter (2021)
+
+  if (!userId) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "userid is required" }),
+    };
+  }
+  const params: any = {
+    TableName: TableName,
+    KeyConditionExpression: "userId = :userId",
+    ExpressionAttributeValues: {
+      ":userId": userId,
+    },
+  };
+
+  if (type) {
+    params.FilterExpression = "#type = :type";
+    params.ExpressionAttributeNames = {
+      "#type": "type",
+    };
+    params.ExpressionAttributeValues[":type"] = type;
+  }
+  if (month && year) {
+    const startDate = `${year}-${month.padStart(2, "0")}-01T00:00:00Z`;
+    const endDate = `${year}-${month.padStart(2, "0")}-31T23:59:59Z`;
+    params.KeyConditionExpression +=
+      " AND createdAt BETWEEN :startDate AND :endDate";
+    params.ExpressionAttributeValues[":startDate"] = startDate;
+    params.ExpressionAttributeValues[":endDate"] = endDate;
+  }
+  const result = await dynamoDb.send(new QueryCommand(params));
+  return {
+    statusCode: 200,
+    body: JSON.stringify(result.Items),
+  };
+}
