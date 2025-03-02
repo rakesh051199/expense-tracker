@@ -21,7 +21,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "noEmit": true,
+    "noEmit": true
   },
   "include": ["backend/src/**/*", "bin/**/*", "lib/**/*"],
   "exclude": ["node_modules", "cdk.out"]

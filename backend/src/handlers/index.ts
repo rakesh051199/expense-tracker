@@ -7,6 +7,7 @@ import {
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { requestValidator } from "./helper";
 
 const dynamoDbClient = new DynamoDBClient({ region: "us-west-2" });
 const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
@@ -40,11 +41,11 @@ export const expenseHandler = async (
           body: JSON.stringify({ message: "Bad request" }),
         };
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error("Error in expenseHandler", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: "Internal server error" }),
+      body: JSON.stringify({ message: error.message }),
     };
   }
 };
@@ -53,18 +54,15 @@ async function createTransaction(
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> {
   const body: Partial<Transaction> = JSON.parse(event.body || "{}");
-  if (!body.amount || !body.type || !body.category || !body.description) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Missing required fields" }),
-    };
-  }
+
+  requestValidator(body);
+
   const transaction: Transaction = {
     userId: body.userId || "user-1",
     transactionId: `txn-${uuidv4()}`,
-    type: body.type,
-    amount: body.amount,
-    category: body.category,
+    type: body.type!,
+    amount: body.amount!,
+    category: body.category!,
     description: body.description || "",
     createdAt: new Date().toISOString(),
     sourceAccount: body.sourceAccount,
