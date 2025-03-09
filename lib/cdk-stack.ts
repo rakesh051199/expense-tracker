@@ -12,6 +12,22 @@ export class ExpenseTrackerStack extends cdk.Stack {
     // ✅ Create a DynamoDB table
     const transactionsTable = new dynamodb.Table(this, "TransactionsTable", {
       partitionKey: {
+        name: "PK",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "SK",
+        type: dynamodb.AttributeType.STRING,
+      },
+
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      tableName: "TransactionsV4",
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // Avoid accidental deletion
+    });
+
+    transactionsTable.addGlobalSecondaryIndex({
+      indexName: "dateIndex",
+      partitionKey: {
         name: "userId",
         type: dynamodb.AttributeType.STRING,
       },
@@ -19,9 +35,7 @@ export class ExpenseTrackerStack extends cdk.Stack {
         name: "createdAt",
         type: dynamodb.AttributeType.STRING,
       },
-
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      tableName: "TransactionsV2",
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // ✅ Create a Lambda function with NodejsFunction
@@ -84,6 +98,22 @@ export class ExpenseTrackerStack extends cdk.Stack {
     );
     transactions.addMethod(
       "GET",
+      new apigateway.LambdaIntegration(expenseLambda),
+      {
+        authorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
+      },
+    );
+    transactions.addMethod(
+      "PATCH",
+      new apigateway.LambdaIntegration(expenseLambda),
+      {
+        authorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
+      },
+    );
+    transactions.addMethod(
+      "DELETE",
       new apigateway.LambdaIntegration(expenseLambda),
       {
         authorizer,
