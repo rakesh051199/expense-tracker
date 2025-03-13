@@ -21,7 +21,7 @@ export class ExpenseTrackerStack extends cdk.Stack {
       },
 
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      tableName: "TransactionsV4",
+      tableName: "TransactionsV5",
       removalPolicy: cdk.RemovalPolicy.RETAIN, // Avoid accidental deletion
     });
 
@@ -33,6 +33,15 @@ export class ExpenseTrackerStack extends cdk.Stack {
       },
       sortKey: {
         name: "createdAt",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    transactionsTable.addGlobalSecondaryIndex({
+      indexName: "emailIndex",
+      partitionKey: {
+        name: "email",
         type: dynamodb.AttributeType.STRING,
       },
       projectionType: dynamodb.ProjectionType.ALL,
@@ -65,8 +74,29 @@ export class ExpenseTrackerStack extends cdk.Stack {
       },
     );
 
+    const budgetLambda = new lambdaNodeJs.NodejsFunction(this, "BudgetLambda", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: "backend/src/handlers/budget.ts",
+      handler: "budgetHandler",
+      environment: {
+        TRANSACTIONS_TABLE: transactionsTable.tableName,
+      },
+    });
+
+    const usersLambda = new lambdaNodeJs.NodejsFunction(this, "UsersLambda", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: "backend/src/handlers/user_management.ts",
+      handler: "userHandler",
+      environment: {
+        TRANSACTIONS_TABLE: transactionsTable.tableName,
+        JWT_SECRET: "my-temp-auth-key",
+      },
+    });
+
     // ✅ Grant Lambda access to DynamoDB
     transactionsTable.grantReadWriteData(expenseLambda);
+    transactionsTable.grantReadWriteData(budgetLambda);
+    transactionsTable.grantReadWriteData(usersLambda);
 
     // ✅ Create API Gateway
     const api = new apigateway.RestApi(this, "ExpenseTrackerAPI", {
@@ -119,6 +149,39 @@ export class ExpenseTrackerStack extends cdk.Stack {
         authorizer,
         authorizationType: apigateway.AuthorizationType.CUSTOM,
       },
+    );
+
+    const budgets = api.root.addResource("budgets");
+    budgets.addMethod("POST", new apigateway.LambdaIntegration(budgetLambda), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    });
+    budgets.addMethod("GET", new apigateway.LambdaIntegration(budgetLambda), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    });
+    budgets.addMethod("PATCH", new apigateway.LambdaIntegration(budgetLambda), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    });
+    budgets.addMethod(
+      "DELETE",
+      new apigateway.LambdaIntegration(budgetLambda),
+      {
+        authorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
+      },
+    );
+
+    const users = api.root.addResource("users");
+    const usersResource = users.addResource("{userAction}");
+    usersResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(usersLambda),
+    );
+    usersResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(usersLambda),
     );
 
     new cdk.CfnOutput(this, "APIEndpoint", { value: api.url });

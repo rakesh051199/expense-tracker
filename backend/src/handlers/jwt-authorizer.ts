@@ -18,12 +18,12 @@ export const handler = async (
     logger.info("Secret Key", { SECRET_KEY });
 
     // Verify JWT
-    const decoded = jwt.verify(token, SECRET_KEY);
+    const decoded: any = jwt.verify(token, SECRET_KEY);
     logger.info("Decoded JWT", { decoded });
-    logger.info("User was authorized", { user: decoded.sub });
+    logger.info("User was authorized", { user: decoded.id });
 
     return {
-      principalId: typeof decoded.sub === "string" ? decoded.sub : "",
+      principalId: typeof decoded.id === "string" ? decoded.id : "",
       policyDocument: {
         Version: "2012-10-17",
         Statement: [
@@ -34,7 +34,7 @@ export const handler = async (
           },
         ],
       },
-      context: { userId: typeof decoded.sub === "string" ? decoded.sub : "" },
+      context: { userId: typeof decoded.id === "string" ? decoded.id : "" },
     };
   } catch (error) {
     logger.error("User unauthorized", { error });
