@@ -212,9 +212,8 @@ async function updateTransaction(
 async function deleteTransaction(
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> {
-  const body: Partial<Transaction> = JSON.parse(event.body || "{}");
-  const userId = body?.userId;
-  const transactionId = body?.transactionId;
+  const userId = event.queryStringParameters?.userId;
+  const transactionId = event.queryStringParameters?.transactionId;
 
   if (!userId || !transactionId) {
     return {

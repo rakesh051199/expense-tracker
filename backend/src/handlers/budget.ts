@@ -49,13 +49,13 @@ async function createBudget(
 ): Promise<APIGatewayProxyResult> {
   const body = JSON.parse(event.body || "");
   requestValidator(body, budgetSchema);
-  const { userId, amount, category, description } = body;
+  const { userId, monthlyLimit, category, description } = body;
   const budget = {
     PK: `USER#${userId}`,
     SK: `BUDGET#${category}`,
     createdAt: new Date().toISOString(),
     userId,
-    amount,
+    monthlyLimit,
     category,
     description,
   };
@@ -83,7 +83,7 @@ async function getBudgets(
     TableName,
     IndexName: "dateIndex",
     KeyConditionExpression: "userId = :userId",
-    ProjectionExpression: "amount, category, description",
+    ProjectionExpression: "monthlyLimit, category, description",
     FilterExpression: "begins_with(SK, :budgetPrefix)",
     ExpressionAttributeValues: {
       ":budgetPrefix": "BUDGET#",
@@ -112,13 +112,13 @@ async function updateBudget(
 ): Promise<APIGatewayProxyResult> {
   const body = JSON.parse(event.body || "");
 
-  const { userId, category, amount } = body;
+  const { userId, category, monthlyLimit } = body;
 
-  if (!userId || !category || !amount) {
+  if (!userId || !category || !monthlyLimit) {
     return {
       statusCode: 400,
       body: JSON.stringify({
-        message: "userId ,budgetId and amount are required",
+        message: "userId ,budgetId and monthlyLimit are required",
       }),
     };
   }
@@ -130,9 +130,9 @@ async function updateBudget(
         PK: `USER#${userId}`,
         SK: `BUDGET#${category}`,
       },
-      UpdateExpression: "SET amount = :amount",
+      UpdateExpression: "SET monthlyLimit = :monthlyLimit",
       ExpressionAttributeValues: {
-        ":amount": amount,
+        ":monthlyLimit": monthlyLimit,
       },
     }),
   );
@@ -145,9 +145,8 @@ async function updateBudget(
 async function deleteBudget(
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || "");
-  const userId = body?.userId;
-  const category = body?.category;
+  const userId = event.queryStringParameters?.userId;
+  const category = event.queryStringParameters?.category;
 
   if (!userId || !category) {
     return {
