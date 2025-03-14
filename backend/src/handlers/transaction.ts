@@ -12,7 +12,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { requestValidator } from "./helper";
-import { expenseSchema } from "./schema";
+import { transactionSchema } from "./schema";
 
 const dynamoDbClient = new DynamoDBClient({ region: "us-west-2" });
 const sesClient = new SESClient({ region: "us-west-2" }); // Change region if needed
@@ -33,10 +33,10 @@ interface Transaction {
   destinationAccount?: string;
 }
 
-export const expenseHandler = async (
+export const handler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
-  logger.info("Expense Handler got invoked");
+  logger.info("Transaction Handler got invoked");
 
   try {
     switch (event.httpMethod) {
@@ -55,7 +55,7 @@ export const expenseHandler = async (
         };
     }
   } catch (error: any) {
-    logger.error("Error in expenseHandler", error);
+    logger.error("Error in Transaction handler", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ message: error.message }),
@@ -70,7 +70,7 @@ async function createTransaction(
   const transactionId = `txn-${uuidv4()}`;
   const transactionAmount = Number(body.amount) || 0;
 
-  requestValidator(body, expenseSchema);
+  requestValidator(body, transactionSchema);
 
   const transaction: Transaction = {
     PK: `USER#${body.userId}`,
@@ -329,7 +329,7 @@ Total Spent: $${spent}
 Consider reviewing your expenses.
 
 Best,
-Your Expense Tracker App`,
+Your Money Tracker App`,
         },
         Html: {
           Data: `
@@ -343,7 +343,7 @@ Your Expense Tracker App`,
                   <li><strong>Total Spent:</strong> $${spent}</li>
                 </ul>
                 <p>Please review your expenses.</p>
-                <p>Best,<br>Your Expense Tracker App</p>
+                <p>Best,<br>Your Money Tracker App</p>
               </body>
             </html>
           `,

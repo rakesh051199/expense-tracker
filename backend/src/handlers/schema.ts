@@ -1,4 +1,4 @@
-const expenseSchema = {
+const transactionSchema = {
   type: "object",
   required: ["userId", "amount", "type", "category", "description"],
   properties: {
@@ -45,4 +45,4 @@ const budgetSchema = {
   additionalProperties: false, // Prevents extra fields from being added
 };
 
-export { expenseSchema, budgetSchema };
+export { transactionSchema, budgetSchema };

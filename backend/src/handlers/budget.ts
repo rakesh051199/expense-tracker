@@ -15,7 +15,7 @@ const dynamoDbClient = new DynamoDBClient({ region: "us-west-2" });
 const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
 const TableName = process.env.TRANSACTIONS_TABLE || "";
 
-export async function budgetHandler(
+export async function handler(
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> {
   logger.info("Budget Handler got invoked");

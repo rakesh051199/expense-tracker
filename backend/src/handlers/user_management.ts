@@ -22,7 +22,7 @@ if (!TableName || !JWT_SECRET) {
 }
 
 // Main handler function
-export const userHandler = async (
+export const handler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
   try {
