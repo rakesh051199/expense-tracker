@@ -1,22 +1,18 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import logger from "../utils/logger";
 import { v4 as uuidv4 } from "uuid";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DeleteCommand,
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { requestValidator } from "./helper";
-import { transactionSchema } from "./schema";
+import { requestValidator, validateUser } from "../utils/helper";
+import { transactionSchema } from "../utils/schema";
+import {
+  getItem,
+  putItem,
+  updateItem,
+  deleteItem,
+  queryItems,
+} from "../utils/db-client";
 
-const dynamoDbClient = new DynamoDBClient({ region: "us-west-2" });
 const sesClient = new SESClient({ region: "us-west-2" }); // Change region if needed
-const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
 const TableName = process.env.TRANSACTIONS_TABLE || "";
 
 interface Transaction {
@@ -57,7 +53,7 @@ export const handler = async (
   } catch (error: any) {
     logger.error("Error in Transaction handler", error);
     return {
-      statusCode: 500,
+      statusCode: error.statusCode || 500,
       body: JSON.stringify({ message: error.message }),
     };
   }
@@ -72,18 +68,30 @@ async function createTransaction(
 
   requestValidator(body, transactionSchema);
 
-  const transaction: Transaction = {
-    PK: `USER#${body.userId}`,
-    SK: `#TRANSACTION#${transactionId}`,
-    transactionId: transactionId,
-    userId: body.userId,
-    type: body.type!,
-    amount: body.amount!,
-    category: body.category!,
-    description: body.description || "",
-    createdAt: new Date().toISOString(),
-    sourceAccount: body.sourceAccount,
-    destinationAccount: body.destinationAccount,
+  if (!body.userId) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "userId is required" }),
+    };
+  }
+
+  await validateUser(body.userId);
+
+  const createTransactionParams = {
+    TableName: TableName,
+    Item: {
+      PK: `USER#${body.userId}`,
+      SK: `#TRANSACTION#${transactionId}`,
+      transactionId: transactionId,
+      userId: body.userId,
+      type: body.type!,
+      amount: body.amount!,
+      category: body.category!,
+      description: body.description || "",
+      createdAt: new Date().toISOString(),
+      sourceAccount: body.sourceAccount,
+      destinationAccount: body.destinationAccount,
+    },
   };
 
   if (body.type === "expense") {
@@ -94,12 +102,7 @@ async function createTransaction(
     );
   }
 
-  await dynamoDb.send(
-    new PutCommand({
-      TableName: TableName,
-      Item: transaction,
-    }),
-  );
+  await putItem(createTransactionParams);
 
   return {
     statusCode: 200,
@@ -121,6 +124,9 @@ async function getAllTransactions(
       body: JSON.stringify({ message: "userid is required" }),
     };
   }
+
+  await validateUser(userId);
+
   const params: any = {
     TableName: TableName,
     IndexName: "dateIndex",
@@ -147,7 +153,7 @@ async function getAllTransactions(
     params.ExpressionAttributeValues[":endDate"] = endDate;
   }
 
-  const result = await dynamoDb.send(new QueryCommand(params));
+  const result = await queryItems(params);
   return {
     statusCode: 200,
     body: JSON.stringify(result.Items),
@@ -169,6 +175,8 @@ async function updateTransaction(
       }),
     };
   }
+
+  await validateUser(userId);
 
   const updateExpression: string[] = [];
   const expressionAttributeValues: { [key: string]: any } = {};
@@ -202,7 +210,8 @@ async function updateTransaction(
     ExpressionAttributeNames: expressionAttributeNames,
     ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
   };
-  await dynamoDb.send(new UpdateCommand(updateParams));
+
+  await updateItem(updateParams);
   return {
     statusCode: 200,
     body: JSON.stringify({ message: "Transaction updated successfully" }),
@@ -224,15 +233,13 @@ async function deleteTransaction(
     };
   }
 
-  await dynamoDb.send(
-    new DeleteCommand({
-      TableName: TableName,
-      Key: {
-        PK: `USER#${userId}`,
-        SK: `#TRANSACTION#${transactionId}`,
-      },
-    }),
-  );
+  await validateUser(userId);
+
+  const deleteTransactionParams = {
+    TableName: TableName,
+    Key: { PK: `USER#${userId}`, SK: `#TRANSACTION#${transactionId}` },
+  };
+  await deleteItem(deleteTransactionParams);
 
   return {
     statusCode: 200,
@@ -245,15 +252,15 @@ async function checkBudgetAndSendAlert(
   category: string,
   transactionAmount: number,
 ) {
-  const budgetCategory = await dynamoDb.send(
-    new GetCommand({
-      TableName: TableName,
-      Key: {
-        PK: `USER#${userId}`,
-        SK: `BUDGET#${category}`,
-      },
-    }),
-  );
+  const getBudgetCategoryParams = {
+    TableName: TableName,
+    Key: {
+      PK: `USER#${userId}`,
+      SK: `BUDGET#${category}`,
+    },
+  };
+
+  const budgetCategory = await getItem(getBudgetCategoryParams);
 
   if (!budgetCategory.Item) {
     logger.info(`No budget set for category: ${category}`);
@@ -261,7 +268,7 @@ async function checkBudgetAndSendAlert(
   }
 
   if (budgetCategory.Item) {
-    const budgetLimit = budgetCategory.Item.amount;
+    const budgetLimit = budgetCategory.Item.monthlyLimit;
     const year = new Date().getFullYear();
     const month = (new Date().getMonth() + 1).toString();
     const startDate = `${year}-${month.padStart(2, "0")}-01T00:00:00Z`;
@@ -282,7 +289,7 @@ async function checkBudgetAndSendAlert(
         ":endDate": endDate,
       },
     };
-    const transactionsData = await dynamoDb.send(new QueryCommand(params));
+    const transactionsData = await queryItems(params);
     const totalExpensesForMonth: number =
       transactionsData.Items?.reduce(
         (acc: number, item: any) => acc + item.amount,

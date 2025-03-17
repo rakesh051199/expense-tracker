@@ -25,10 +25,10 @@ const transactionSchema = {
 
 const budgetSchema = {
   type: "object",
-  required: ["userId", "amount", "category"],
+  required: ["userId", "monthlyLimit", "category"],
   properties: {
     userId: { type: "string", minLength: 1 },
-    amount: { type: "number", minimum: 0.01 }, // Must be a positive number
+    monthlyLimit: { type: "number", minimum: 0.01 }, // Must be a positive number
     category: {
       type: "string",
       enum: [

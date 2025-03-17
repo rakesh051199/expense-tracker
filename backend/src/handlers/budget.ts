@@ -1,23 +1,20 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
 import logger from "../utils/logger";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { requestValidator } from "../utils/helper";
+import { budgetSchema } from "../utils/schema";
+import { validateUser } from "../utils/helper";
 import {
-  DeleteCommand,
-  DynamoDBDocumentClient,
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
-import { requestValidator } from "./helper";
-import { budgetSchema } from "./schema";
+  updateItem,
+  deleteItem,
+  queryItems,
+  putItem,
+} from "../utils/db-client";
 
-const dynamoDbClient = new DynamoDBClient({ region: "us-west-2" });
-const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
 const TableName = process.env.TRANSACTIONS_TABLE || "";
 
-export async function handler(
+export const handler = async (
   event: APIGatewayEvent,
-): Promise<APIGatewayProxyResult> {
+): Promise<APIGatewayProxyResult> => {
   logger.info("Budget Handler got invoked");
   try {
     switch (event.httpMethod) {
@@ -42,7 +39,7 @@ export async function handler(
       body: JSON.stringify({ message: error.message }),
     };
   }
-}
+};
 
 async function createBudget(
   event: APIGatewayEvent,
@@ -50,16 +47,26 @@ async function createBudget(
   const body = JSON.parse(event.body || "");
   requestValidator(body, budgetSchema);
   const { userId, monthlyLimit, category, description } = body;
-  const budget = {
-    PK: `USER#${userId}`,
-    SK: `BUDGET#${category}`,
-    createdAt: new Date().toISOString(),
-    userId,
-    monthlyLimit,
-    category,
-    description,
+  if (!userId) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "userId is required" }),
+    };
+  }
+  await validateUser(userId);
+  const createBudgetParams = {
+    TableName,
+    Item: {
+      PK: `USER#${userId}`,
+      SK: `BUDGET#${category}`,
+      createdAt: new Date().toISOString(),
+      userId,
+      monthlyLimit,
+      category,
+      description,
+    },
   };
-  await dynamoDb.send(new PutCommand({ TableName, Item: budget }));
+  await putItem(createBudgetParams);
   return {
     statusCode: 201,
     body: JSON.stringify({ message: "Budget created successfully" }),
@@ -78,6 +85,8 @@ async function getBudgets(
       body: JSON.stringify({ message: "userId is required" }),
     };
   }
+
+  await validateUser(userId);
 
   const params: any = {
     TableName,
@@ -100,7 +109,7 @@ async function getBudgets(
     params.ExpressionAttributeValues[":endDate"] = endDate;
   }
 
-  const result = await dynamoDb.send(new QueryCommand(params));
+  const result = await queryItems(params);
   return {
     statusCode: 200,
     body: JSON.stringify(result.Items),
@@ -123,19 +132,21 @@ async function updateBudget(
     };
   }
 
-  await dynamoDb.send(
-    new UpdateCommand({
-      TableName,
-      Key: {
-        PK: `USER#${userId}`,
-        SK: `BUDGET#${category}`,
-      },
-      UpdateExpression: "SET monthlyLimit = :monthlyLimit",
-      ExpressionAttributeValues: {
-        ":monthlyLimit": monthlyLimit,
-      },
-    }),
-  );
+  await validateUser(userId);
+
+  const updateBudgetParams = {
+    TableName,
+    Key: {
+      PK: `USER#${userId}`,
+      SK: `BUDGET#${category}`,
+    },
+    UpdateExpression: "SET monthlyLimit = :monthlyLimit",
+    ExpressionAttributeValues: {
+      ":monthlyLimit": monthlyLimit,
+    },
+  };
+  await updateItem(updateBudgetParams);
+
   return {
     statusCode: 200,
     body: JSON.stringify({ message: "Budget updated successfully" }),
@@ -157,15 +168,16 @@ async function deleteBudget(
     };
   }
 
-  await dynamoDb.send(
-    new DeleteCommand({
-      TableName,
-      Key: {
-        PK: `USER#${userId}`,
-        SK: `BUDGET#${category}`,
-      },
-    }),
-  );
+  await validateUser(userId);
+
+  const deleteBudgetParams = {
+    TableName,
+    Key: {
+      PK: `USER#${userId}`,
+      SK: `BUDGET#${category}`,
+    },
+  };
+  await deleteItem(deleteBudgetParams);
 
   return {
     statusCode: 200,

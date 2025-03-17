@@ -1,17 +1,8 @@
-import {
-  PutCommand,
-  DynamoDBDocumentClient,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { APIGatewayEvent, APIGatewayProxyResult } from "aws-lambda";
-
-// DynamoDB client setup
-const dynamoDBClient = new DynamoDBClient({ region: "us-west-2" });
-const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
+import { putItem, queryItems } from "../utils/db-client";
 
 // Ensure environment variables are set
 const TableName = process.env.TRANSACTIONS_TABLE;
@@ -83,7 +74,7 @@ async function registerUser(
   };
 
   try {
-    await docClient.send(new PutCommand(userItem));
+    await putItem(userItem);
 
     const token = generateJwt(userId, email);
     return {
@@ -161,7 +152,7 @@ async function findUserByEmail(email: string) {
     },
   };
 
-  const result = await docClient.send(new QueryCommand(params));
+  const result = await queryItems(params);
   return result.Items && result.Items.length > 0
     ? {
         userId: result.Items[0].PK.replace("USER#", ""),
