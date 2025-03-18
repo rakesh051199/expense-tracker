@@ -4,6 +4,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaNodeJs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 export class MoneyTrackingSystemStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -90,6 +91,14 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
     lambdaFunctions.forEach((fn) => {
       moneyTrackingTable.grantReadWriteData(fn);
     });
+
+    // Grant SES permissions to transactionsLambda
+    transactionsLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ["ses:*"],
+        resources: ["*"],
+      }),
+    );
 
     // ✅ Create API Gateway
     const api = new apigateway.RestApi(this, "MoneyTrackerAPI", {
