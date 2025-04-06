@@ -34,10 +34,12 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   logger.info("Transaction Handler got invoked");
 
+  logger.info("Event", event);
+
   try {
     switch (event.httpMethod) {
       case "POST":
-        return await createTransaction(event);
+        return createTransaction(event);
       case "GET":
         return await getAllTransactions(event);
       case "PATCH":
@@ -65,8 +67,9 @@ async function createTransaction(
   const body: Partial<Transaction> = JSON.parse(event.body || "{}");
   const transactionId = `txn-${uuidv4()}`;
   const transactionAmount = Number(body.amount) || 0;
+  const schema = await transactionSchema;
 
-  requestValidator(body, transactionSchema);
+  requestValidator(body, schema);
 
   if (!body.userId) {
     return {
@@ -106,6 +109,12 @@ async function createTransaction(
 
   return {
     statusCode: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    },
     body: JSON.stringify({ message: "Transaction added successfully" }),
   };
 }
@@ -117,6 +126,8 @@ async function getAllTransactions(
   const type = event.queryStringParameters?.type;
   const month = event.queryStringParameters?.month;
   const year = event.queryStringParameters?.year;
+
+  logger.info("Query Params", userId, type, month, year);
 
   if (!userId) {
     return {
@@ -156,6 +167,10 @@ async function getAllTransactions(
   const result = await queryItems(params);
   return {
     statusCode: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+      "Access-Control-Allow-Credentials": "true",
+    },
     body: JSON.stringify(result.Items),
   };
 }

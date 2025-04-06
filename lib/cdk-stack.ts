@@ -5,6 +5,17 @@ import * as lambdaNodeJs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as iam from "aws-cdk-lib/aws-iam";
+import { BlockPublicAccess, Bucket, HttpMethods } from "aws-cdk-lib/aws-s3";
+import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
+import { RemovalPolicy } from "aws-cdk-lib";
+import {
+  Distribution,
+  OriginAccessIdentity,
+  ViewerProtocolPolicy,
+  CachePolicy,
+  AllowedMethods,
+} from "aws-cdk-lib/aws-cloudfront";
+import { S3Origin } from "aws-cdk-lib/aws-cloudfront-origins";
 
 export class MoneyTrackingSystemStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -12,39 +23,23 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
 
     // ✅ Create a DynamoDB table
     const moneyTrackingTable = new dynamodb.Table(this, "MoneyTrackingTable", {
-      partitionKey: {
-        name: "PK",
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: "SK",
-        type: dynamodb.AttributeType.STRING,
-      },
-
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       tableName: "MoneyTrackingTableV1",
-      removalPolicy: cdk.RemovalPolicy.RETAIN, // Avoid accidental deletion
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     moneyTrackingTable.addGlobalSecondaryIndex({
       indexName: "dateIndex",
-      partitionKey: {
-        name: "userId",
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: "createdAt",
-        type: dynamodb.AttributeType.STRING,
-      },
+      partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "createdAt", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
     moneyTrackingTable.addGlobalSecondaryIndex({
       indexName: "emailIndex",
-      partitionKey: {
-        name: "email",
-        type: dynamodb.AttributeType.STRING,
-      },
+      partitionKey: { name: "email", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
@@ -69,8 +64,8 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       },
     );
 
-    const tokenValidatorLambda = createLambdaFunction(
-      "TokenValidatorLambda",
+    const requestValidatorLambda = createLambdaFunction(
+      "RequestValidatorLambda",
       "jwt-authorizer",
       {
         JWT_SECRET: "my-temp-auth-key",
@@ -86,13 +81,13 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       JWT_SECRET: "my-temp-auth-key",
     });
 
-    const lambdaFunctions = [transactionsLambda, budgetLambda, usersLambda];
-
-    lambdaFunctions.forEach((fn) => {
-      moneyTrackingTable.grantReadWriteData(fn);
+    const sessionLambda = createLambdaFunction("SessionLambda", "session", {
+      JWT_SECRET: "my-temp-auth-key",
     });
 
-    // Grant SES permissions to transactionsLambda
+    const lambdaFunctions = [transactionsLambda, budgetLambda, usersLambda];
+    lambdaFunctions.forEach((fn) => moneyTrackingTable.grantReadWriteData(fn));
+
     transactionsLambda.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["ses:*"],
@@ -104,17 +99,26 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, "MoneyTrackerAPI", {
       restApiName: "MoneyTrackerAPI",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowOrigins: ["https://dlujnv9c6ivls.cloudfront.net"], // Explicit origin
+        allowMethods: apigateway.Cors.ALL_METHODS, // Allow all HTTP methods
+        allowHeaders: [
+          "Authorization",
+          "Content-Type",
+          "X-Api-Key",
+          "Cookie", // ✅ Allow Cookie Header
+        ],
+        allowCredentials: true, // ✅ Crucial for cookies
+        statusCode: 204, // Best practice for preflight
       },
     });
 
-    const authorizer = new apigateway.TokenAuthorizer(
+    const requestAuthorizer = new apigateway.RequestAuthorizer(
       this,
-      "MoneyTrackerAPIAuthorizer",
+      "MoneyTrackerRequestAuthorizer",
       {
-        handler: tokenValidatorLambda,
-        identitySource: "method.request.header.Authorization",
+        handler: requestValidatorLambda,
+        identitySources: [apigateway.IdentitySource.header("Cookie")],
+        resultsCacheTtl: cdk.Duration.seconds(0),
       },
     );
 
@@ -134,26 +138,84 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       );
     };
 
-    // ✅ Add a Lambda-backed endpoint
     const transactions = api.root.addResource("transactions");
     const budgets = api.root.addResource("budgets");
-    const users = api.root.addResource("users");
-    const usersResource = users.addResource("{userAction}");
+    const users = api.root.addResource("users").addResource("{userAction}");
+    const session = api.root.addResource("session");
 
     addLambdaMethod(
       transactions,
       ["POST", "GET", "PATCH", "DELETE"],
       transactionsLambda,
-      authorizer,
+      requestAuthorizer,
     );
     addLambdaMethod(
       budgets,
       ["POST", "GET", "PATCH", "DELETE"],
       budgetLambda,
-      authorizer,
+      requestAuthorizer,
     );
-    addLambdaMethod(usersResource, ["POST", "GET"], usersLambda);
+    addLambdaMethod(users, ["POST", "GET"], usersLambda);
+    addLambdaMethod(session, ["GET"], sessionLambda, requestAuthorizer);
+
+    // ✅ S3 Bucket for Static Website Hosting
+    const myMoneyAppBucket = new Bucket(this, "MyMoneyAppBucket", {
+      bucketName: "my-money-app-bucket",
+      removalPolicy: RemovalPolicy.DESTROY,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+    });
+
+    const originAccessIdentity = new OriginAccessIdentity(this, "MyOAI");
+    myMoneyAppBucket.grantRead(originAccessIdentity);
+
+    const distribution = new Distribution(this, "MyMoneyAppDistribution", {
+      defaultBehavior: {
+        origin: new S3Origin(myMoneyAppBucket, { originAccessIdentity }),
+        allowedMethods: AllowedMethods.ALLOW_GET_HEAD,
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+      },
+      defaultRootObject: "index.html",
+      errorResponses: [
+        {
+          httpStatus: 404,
+          responsePagePath: "/index.html",
+          responseHttpStatus: 200,
+        },
+      ],
+    });
+
+    new BucketDeployment(this, "DeployMyMoneyAppBucket", {
+      sources: [Source.asset("./mobile-ui/build")],
+      destinationBucket: myMoneyAppBucket,
+      distribution,
+      distributionPaths: ["/*"],
+    });
+
+    // ✅ S3 Bucket for categories.json
+    const categoriesBucket = new Bucket(this, "CategoryBucket", {
+      bucketName: "my-money-app-categories-bucket",
+      publicReadAccess: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ACLS,
+      cors: [
+        {
+          allowedMethods: [HttpMethods.GET],
+          allowedOrigins: ["https://dlujnv9c6ivls.cloudfront.net"],
+          allowedHeaders: ["*"],
+        },
+      ],
+    });
+
+    // ✅ Deploy categories.json file
+    new BucketDeployment(this, "DeployCategoriesJson", {
+      sources: [Source.asset("backend/src/categories")], // Folder containing categories.json
+      destinationBucket: categoriesBucket,
+    });
 
     new cdk.CfnOutput(this, "APIEndpoint", { value: api.url });
+    new cdk.CfnOutput(this, "S3BucketURL", {
+      value: myMoneyAppBucket.bucketWebsiteUrl,
+    });
   }
 }

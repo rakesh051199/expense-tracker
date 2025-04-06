@@ -42,13 +42,6 @@ async function registerUser(
 ): Promise<APIGatewayProxyResult> {
   const { name, password, email } = JSON.parse(event.body || "{}");
 
-  if (!name || !password || !email) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Missing required fields" }),
-    };
-  }
-
   // Check if the user already exists
   const existingUser = await findUserByEmail(email);
   if (existingUser) {
@@ -76,13 +69,18 @@ async function registerUser(
   try {
     await putItem(userItem);
 
-    const token = generateJwt(userId, email);
     return {
       statusCode: 201,
+
+      headers: {
+        "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net", // Allow your frontend
+        "Access-Control-Allow-Credentials": true, // Required for cookies
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+
       body: JSON.stringify({
         message: "User registered successfully",
-        user: { id: userId, name, email },
-        token,
       }),
     };
   } catch (error) {
@@ -124,12 +122,20 @@ async function loginUser(
   }
 
   const token = generateJwt(user.userId, user.email);
+
   return {
     statusCode: 200,
+    headers: {
+      "Set-Cookie": `authToken=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=900`,
+      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net", // Allow your frontend
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+
     body: JSON.stringify({
       message: "User logged in successfully",
       user: { id: user.userId, name: user.name, email: user.email },
-      token,
     }),
   };
 }
@@ -137,7 +143,7 @@ async function loginUser(
 // Helper: Generate JWT
 function generateJwt(userId: string, email: string) {
   return jwt.sign({ id: userId, email: email, role: "user" }, JWT_SECRET!, {
-    expiresIn: "1h",
+    expiresIn: "15m",
   });
 }
 

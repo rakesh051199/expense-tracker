@@ -45,7 +45,8 @@ async function createBudget(
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> {
   const body = JSON.parse(event.body || "");
-  requestValidator(body, budgetSchema);
+  const schema = await budgetSchema;
+  requestValidator(body, schema);
   const { userId, monthlyLimit, category, description } = body;
   if (!userId) {
     return {
@@ -69,6 +70,12 @@ async function createBudget(
   await putItem(createBudgetParams);
   return {
     statusCode: 201,
+    headers: {
+      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    },
     body: JSON.stringify({ message: "Budget created successfully" }),
   };
 }

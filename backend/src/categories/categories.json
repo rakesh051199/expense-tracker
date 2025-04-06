@@ -1,0 +1,39 @@
+{
+  "income": [
+    "Salary",
+    "Freelancing",
+    "Business Profit",
+    "Investment Returns",
+    "Rental Income",
+    "Dividends",
+    "Stock Trading Gains",
+    "Bonuses",
+    "Pension",
+    "Grants",
+    "Interest Income",
+    "Cashback & Rewards",
+    "Other Income"
+  ],
+  "expense": [
+    "Rent/Mortgage",
+    "Groceries",
+    "Dining Out",
+    "Transportation",
+    "Fuel",
+    "Car Loan",
+    "Insurance",
+    "Utilities (Electricity, Water, Internet)",
+    "Entertainment",
+    "Subscription Services (Netflix, Spotify, etc.)",
+    "Shopping",
+    "Medical Expenses",
+    "Gym/Fitness",
+    "Education",
+    "Loan Payments",
+    "Credit Card Bills",
+    "Travel",
+    "Gifts & Donations",
+    "Household Supplies",
+    "Miscellaneous"
+  ]
+}
