@@ -11,6 +11,8 @@ import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function AddExpense() {
   const [form, setForm] = useState({
@@ -21,6 +23,7 @@ export default function AddExpense() {
     userId: "",
   });
   const { user, categories }: any = useUser();
+  const navigate = useNavigate();
 
   const handleChange = (field: any) => (e: any) => {
     const value =
@@ -43,6 +46,13 @@ export default function AddExpense() {
       console.error("Expense addition failed", e);
     }
   };
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+  }, [user]);
 
   return (
     <Box

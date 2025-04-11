@@ -165,13 +165,29 @@ async function getAllTransactions(
   }
 
   const result = await queryItems(params);
+
+  // Calculate total income and expenses
+  const totalIncome =
+    result.Items?.reduce((sum: number, item: any) => {
+      return item.type === "income" ? sum + item.amount : sum;
+    }, 0) || 0;
+
+  const totalExpense =
+    result.Items?.reduce((sum: number, item: any) => {
+      return item.type === "expense" ? sum + item.amount : sum;
+    }, 0) || 0;
+
   return {
     statusCode: 200,
     headers: {
       "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
       "Access-Control-Allow-Credentials": "true",
     },
-    body: JSON.stringify(result.Items),
+    body: JSON.stringify({
+      transactions: result.Items,
+      totalIncome,
+      totalExpense,
+    }),
   };
 }
 

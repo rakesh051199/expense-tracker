@@ -12,6 +12,14 @@ import {
 
 const TableName = process.env.TRANSACTIONS_TABLE || "";
 
+// Define global headers
+const GLOBAL_HEADERS = {
+  "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+  "Access-Control-Allow-Credentials": "true",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
 export const handler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
@@ -66,16 +74,13 @@ async function createBudget(
       category,
       description,
     },
+    ConditionExpression: "attribute_not_exists(SK)", // Prevent overwriting existing budget
   };
+
   await putItem(createBudgetParams);
   return {
     statusCode: 201,
-    headers: {
-      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
-      "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    },
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({ message: "Budget created successfully" }),
   };
 }
@@ -86,6 +91,7 @@ async function getBudgets(
   const userId = event.queryStringParameters?.userId;
   const year = event.queryStringParameters?.year;
   const month = event.queryStringParameters?.month;
+
   if (!userId) {
     return {
       statusCode: 400,
@@ -95,7 +101,8 @@ async function getBudgets(
 
   await validateUser(userId);
 
-  const params: any = {
+  // Fetch all budgets for the user
+  const budgetParams: any = {
     TableName,
     IndexName: "dateIndex",
     KeyConditionExpression: "userId = :userId",
@@ -107,19 +114,52 @@ async function getBudgets(
     },
   };
 
+  const budgetResult = await queryItems(budgetParams);
+  const budgets = budgetResult.Items || [];
+
+  // Fetch all transactions for the user in a single query
+  const transactionParams: any = {
+    TableName,
+    IndexName: "dateIndex",
+    KeyConditionExpression: "userId = :userId",
+    FilterExpression: "begins_with(SK, :transactionPrefix)",
+    ExpressionAttributeValues: {
+      ":userId": userId,
+      ":transactionPrefix": "#TRANSACTION#",
+    },
+    ProjectionExpression: "amount, category",
+  };
+
   if (year && month) {
     const startDate = `${year}-${month.padStart(2, "0")}-01T00:00:00Z`;
     const endDate = `${year}-${month.padStart(2, "0")}-31T23:59:59Z`;
-    params.KeyConditionExpression +=
+    transactionParams.KeyConditionExpression +=
       " AND createdAt BETWEEN :startDate AND :endDate";
-    params.ExpressionAttributeValues[":startDate"] = startDate;
-    params.ExpressionAttributeValues[":endDate"] = endDate;
+    transactionParams.ExpressionAttributeValues[":startDate"] = startDate;
+    transactionParams.ExpressionAttributeValues[":endDate"] = endDate;
   }
 
-  const result = await queryItems(params);
+  const transactionResult = await queryItems(transactionParams);
+  const transactions = transactionResult.Items || [];
+
+  // Calculate total spent for each category
+  const categorySpendMap: { [key: string]: number } = {};
+  for (const transaction of transactions) {
+    const category = transaction.category;
+    const amount = transaction.amount || 0;
+    categorySpendMap[category] = (categorySpendMap[category] || 0) + amount;
+  }
+
+  // Merge total spent into budgets
+  const enrichedBudgets = budgets.map((budget) => ({
+    ...budget,
+    totalSpent: categorySpendMap[budget.category] || 0,
+  }));
+
   return {
     statusCode: 200,
-    body: JSON.stringify(result.Items),
+    headers: GLOBAL_HEADERS,
+    body: JSON.stringify(enrichedBudgets),
   };
 }
 
@@ -156,6 +196,7 @@ async function updateBudget(
 
   return {
     statusCode: 200,
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({ message: "Budget updated successfully" }),
   };
 }
@@ -188,6 +229,7 @@ async function deleteBudget(
 
   return {
     statusCode: 200,
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({ message: "Budget deleted successfully" }),
   };
 }

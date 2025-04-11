@@ -6,6 +6,7 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
+import { useNavigate } from "react-router-dom";
 
 // ✅ Reusable Component for Income/Expense Card
 const InfoCard = ({ icon, label, amount, color }: any) => (
@@ -34,8 +35,13 @@ export default function Home() {
   const [totalExpense, setTotalExpense] = useState<undefined | number>(
     undefined,
   );
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
     async function fetchTransactions() {
       try {
         const response = await axios.get(
@@ -43,7 +49,10 @@ export default function Home() {
           { withCredentials: true },
         );
         console.log("Transactions fetched successfully", response.data);
-        setTransactions(response.data);
+        setTransactions(response.data.transactions);
+        setTotalIncome(response.data.totalIncome);
+        setTotalExpense(response.data.totalExpense);
+        setTotalBalance(response.data.totalIncome - response.data.totalExpense);
       } catch (e) {
         console.error("Transactions fetch failed", e);
         alert("Transactions fetch failed");
@@ -61,32 +70,6 @@ export default function Home() {
   const handleNextMonth = () => {
     setCurrentMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
   };
-
-  useEffect(() => {
-    const incomeTransactions = transactions.filter(
-      (transaction: any) => transaction.type === "income",
-    );
-    const totalIncome = incomeTransactions.reduce(
-      (initialAmount: any, txn: any) => {
-        return initialAmount + txn.amount;
-      },
-      0,
-    );
-
-    const expenseTransactions = transactions.filter(
-      (transaction: any) => transaction.type === "expense",
-    );
-    const totalExpense = expenseTransactions.reduce(
-      (initialAmount: any, txn: any) => {
-        return initialAmount + txn.amount;
-      },
-      0,
-    );
-
-    setTotalBalance(totalIncome - totalExpense);
-    setTotalIncome(totalIncome);
-    setTotalExpense(totalExpense);
-  }, [transactions]);
 
   return (
     <Box

@@ -1,5 +1,4 @@
 import { Box, Typography, Avatar, IconButton } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -9,6 +8,8 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import LockIcon from "@mui/icons-material/Lock";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import { useUser } from "../context/UserContext";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const menuItems = [
   { icon: <DiamondIcon />, label: "Invite Friends" },
@@ -22,6 +23,13 @@ const menuItems = [
 export default function Profile() {
   const navigate = useNavigate();
   const { user } = useUser();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+  }, [user]);
 
   const handleBack = () => navigate("/home");
 
