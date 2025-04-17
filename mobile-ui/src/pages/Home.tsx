@@ -1,14 +1,21 @@
-import { useEffect, useState } from "react";
-import { Box, Typography, IconButton, Stack, TextField } from "@mui/material";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import CircularProgress from "@mui/material/CircularProgress";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
-import { useNavigate } from "react-router-dom";
+import { generateMonths } from "../utils/util";
 
-// ✅ Reusable Component for Income/Expense Card
 const InfoCard = ({ icon, label, amount, color }: any) => (
   <Stack alignItems="center" spacing={0.5}>
     <Box display="flex" alignItems="center" gap={1}>
@@ -22,54 +29,72 @@ const InfoCard = ({ icon, label, amount, color }: any) => (
 );
 
 export default function Home() {
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
-
-  const months = ["March 2025", "February 2025", "January 2025"];
-
-  const [transactions, setTransactions] = useState<any>([]);
   const { user }: any = useUser();
-  const [totalBalance, setTotalBalance] = useState<undefined | number>(
-    undefined,
-  );
-  const [totalIncome, setTotalIncome] = useState<undefined | number>(undefined);
-  const [totalExpense, setTotalExpense] = useState<undefined | number>(
-    undefined,
-  );
   const navigate = useNavigate();
+  const months = generateMonths(2023, 2025);
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-    async function fetchTransactions() {
-      try {
-        const response = await axios.get(
-          `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user.id}`,
-          { withCredentials: true },
-        );
-        console.log("Transactions fetched successfully", response.data);
-        setTransactions(response.data.transactions);
-        setTotalIncome(response.data.totalIncome);
-        setTotalExpense(response.data.totalExpense);
-        setTotalBalance(response.data.totalIncome - response.data.totalExpense);
-      } catch (e) {
-        console.error("Transactions fetch failed", e);
-        alert("Transactions fetch failed");
-      }
-    }
-    fetchTransactions();
-  }, []);
+  const currentDate = new Date();
+  const currentMonthIndex = months.findIndex(
+    (month) =>
+      month.year === currentDate.getFullYear() &&
+      month.month === currentDate.getMonth() + 1,
+  );
+
+  const [selectedMonthIndex, setSelectedMonthIndex] =
+    useState(currentMonthIndex);
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["transactions", user?.id, months[selectedMonthIndex]],
+    queryFn: async () => {
+      const selectedMonth = months[selectedMonthIndex];
+      const response = await axios.get(
+        `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
+        { withCredentials: true },
+      );
+      return response.data;
+    },
+    enabled: !!user?.id,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (isError) {
+    console.error("Transactions fetch failed:", error);
+    toast.error("Failed to load transactions. Please try again later.", {
+      position: "top-right",
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+  }
+
+  const transactions = Array.isArray(data?.transactions)
+    ? data.transactions
+    : [];
+  const totalIncome = data?.totalIncome || 0;
+  const totalExpense = data?.totalExpense || 0;
+  const totalBalance = totalIncome - totalExpense;
 
   const handlePrevMonth = () => {
-    setCurrentMonthIndex((prev) =>
+    setSelectedMonthIndex((prev) =>
       prev === months.length - 1 ? prev : prev + 1,
     );
   };
 
   const handleNextMonth = () => {
-    setCurrentMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
+    setSelectedMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
   };
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user]);
 
   return (
     <Box
@@ -83,7 +108,7 @@ export default function Home() {
         fontFamily: "Roboto, sans",
       }}
     >
-      {/* Header */}
+      <ToastContainer />
       <Box
         sx={{
           backgroundColor: "#2A7C76",
@@ -98,7 +123,6 @@ export default function Home() {
           Good afternoon, {user?.name}
         </Typography>
 
-        {/* ✅ Balance Card */}
         <Box
           sx={{
             backgroundColor: "#1E6B64",
@@ -114,43 +138,75 @@ export default function Home() {
         >
           <Typography variant="h6">Total Balance</Typography>
           <Typography variant="h4" fontWeight={600}>
-            {totalBalance}
+            {isLoading ? (
+              <CircularProgress
+                size={24}
+                sx={{
+                  color: "#fff",
+                }}
+              />
+            ) : (
+              `$${totalBalance.toFixed(2)}`
+            )}
           </Typography>
 
-          {/* ✅ Simplified Income & Expenses */}
           <Stack direction="row" justifyContent="space-between" mt={2}>
             <InfoCard
               icon={<ArrowDownwardIcon />}
               label="Income"
-              amount={totalIncome}
+              amount={
+                isLoading ? (
+                  <CircularProgress sx={{ color: "#fff" }} />
+                ) : (
+                  totalIncome
+                )
+              }
             />
             <InfoCard
               icon={<ArrowUpwardIcon />}
               label="Expenses"
-              amount={totalExpense}
+              amount={
+                isLoading ? (
+                  <CircularProgress sx={{ color: "#fff" }} />
+                ) : (
+                  totalExpense
+                )
+              }
             />
           </Stack>
         </Box>
       </Box>
 
-      {/* ✅ Month Navigator */}
       <Box display="flex" alignItems="center" justifyContent="center" my={3}>
         <IconButton
           onClick={handlePrevMonth}
-          disabled={currentMonthIndex === months.length - 1}
+          disabled={selectedMonthIndex === months.length - 1}
         >
           <ArrowBackIosIcon />
         </IconButton>
         <Typography variant="h6" fontWeight={600} mx={2}>
-          {months[currentMonthIndex]}
+          {months[selectedMonthIndex].label}
         </Typography>
         <IconButton
           onClick={handleNextMonth}
-          disabled={currentMonthIndex === 0}
+          disabled={selectedMonthIndex === 0}
         >
           <ArrowForwardIosIcon />
         </IconButton>
       </Box>
+
+      {isLoading && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: 200,
+          }}
+        >
+          <CircularProgress sx={{ color: "#fff" }} />
+        </Box>
+      )}
 
       {transactions.length === 0 ? (
         <Typography variant="body1" color="text.secondary" textAlign={"center"}>
@@ -172,7 +228,9 @@ export default function Home() {
             }}
           >
             <Box>
-              <Typography fontWeight={500}>{txn.type}</Typography>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography fontWeight={500}>{txn.category}</Typography>
+              </Box>
               <Typography variant="caption" color="gray">
                 {txn.createdAt}
               </Typography>

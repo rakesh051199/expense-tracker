@@ -29,6 +29,14 @@ interface Transaction {
   destinationAccount?: string;
 }
 
+// Define global headers
+const GLOBAL_HEADERS = {
+  "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+  "Access-Control-Allow-Credentials": "true",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
 export const handler = async (
   event: APIGatewayEvent,
 ): Promise<APIGatewayProxyResult> => {
@@ -109,12 +117,7 @@ async function createTransaction(
 
   return {
     statusCode: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
-      "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    },
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({ message: "Transaction added successfully" }),
   };
 }
@@ -179,10 +182,7 @@ async function getAllTransactions(
 
   return {
     statusCode: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
-      "Access-Control-Allow-Credentials": "true",
-    },
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({
       transactions: result.Items,
       totalIncome,
@@ -245,6 +245,7 @@ async function updateTransaction(
   await updateItem(updateParams);
   return {
     statusCode: 200,
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({ message: "Transaction updated successfully" }),
   };
 }
@@ -274,6 +275,7 @@ async function deleteTransaction(
 
   return {
     statusCode: 200,
+    headers: GLOBAL_HEADERS,
     body: JSON.stringify({ message: "Transaction deleted successfully" }),
   };
 }

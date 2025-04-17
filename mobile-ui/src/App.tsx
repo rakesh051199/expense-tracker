@@ -9,22 +9,30 @@ import BottomNav from "./components/BottomNav";
 import "./App.css";
 import { UserProvider } from "./context/UserContext";
 import Budget from "./pages/Budget";
+import { Box } from "@mui/material";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <Router>
-      <UserProvider>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/add" element={<AddExpense />} />
-          <Route path="/budget" element={<Budget />} />
-        </Routes>
-        <BottomNav />
-      </UserProvider>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <UserProvider>
+          <Box sx={{ pb: "24px" /* Adjust based on BottomNav height */ }}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/add" element={<AddExpense />} />
+              <Route path="/budget" element={<Budget />} />
+            </Routes>
+          </Box>
+          <BottomNav />
+        </UserProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }

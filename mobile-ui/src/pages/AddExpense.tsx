@@ -1,18 +1,19 @@
-import { useState } from "react";
-import {
-  Box,
-  TextField,
-  Typography,
-  Button,
-  IconButton,
-  MenuItem,
-} from "@mui/material";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import MenuItem from "@mui/material/MenuItem";
+import CircularProgress from "@mui/material/CircularProgress";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 
 export default function AddExpense() {
   const [form, setForm] = useState({
@@ -22,8 +23,10 @@ export default function AddExpense() {
     type: "expense",
     userId: "",
   });
+  const [loading, setLoading] = useState(false);
   const { user, categories }: any = useUser();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleChange = (field: any) => (e: any) => {
     const value =
@@ -33,17 +36,29 @@ export default function AddExpense() {
 
   const handleAddExpense = async (e: any) => {
     e.preventDefault();
-    console.log(form);
+    setLoading(true);
     form.userId = user.id;
     try {
-      const response = await axios.post(
+      await axios.post(
         "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/transactions",
         form,
         { withCredentials: true },
       );
-      console.log("Expense added successfully", response.data);
+      queryClient.invalidateQueries(["transactions", user?.id] as any); // Invalidate the transactions query to refetch data
+      navigate("/home");
     } catch (e) {
-      console.error("Expense addition failed", e);
+      console.error("Transaction addition failed", e);
+      toast.error("Failed to add Transaction. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,7 +78,8 @@ export default function AddExpense() {
         minHeight: "100vh",
       }}
     >
-      {/* Header */}
+      <ToastContainer />
+
       <Box
         sx={{
           display: "flex",
@@ -126,7 +142,6 @@ export default function AddExpense() {
             ))}
           </TextField>
 
-          {/* Amount Input */}
           <Typography variant="body2" color="text.secondary" mt={3} mb={1}>
             Amount
           </Typography>
@@ -137,10 +152,8 @@ export default function AddExpense() {
             placeholder="$ 48.00"
             required
             type="number"
-            // inputProps={{ min: 0 }}
           />
 
-          {/* Description Input */}
           <Typography variant="body2" color="text.secondary" mt={3} mb={1}>
             Description
           </Typography>
@@ -162,8 +175,16 @@ export default function AddExpense() {
                 fontWeight: 600,
                 backgroundColor: "#2A7C76",
               }}
+              disabled={loading}
             >
-              Save
+              {loading ? (
+                <Box display="flex" alignItems="center" gap={1}>
+                  <CircularProgress size={20} sx={{ color: "white" }} />
+                  Saving...
+                </Box>
+              ) : (
+                "Save"
+              )}
             </Button>
           </Box>
         </Box>

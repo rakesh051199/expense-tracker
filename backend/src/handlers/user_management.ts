@@ -71,14 +71,11 @@ async function registerUser(
 
     return {
       statusCode: 201,
-
       headers: {
         "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net", // Allow your frontend
-        "Access-Control-Allow-Credentials": true, // Required for cookies
         "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
-
       body: JSON.stringify({
         message: "User registered successfully",
       }),

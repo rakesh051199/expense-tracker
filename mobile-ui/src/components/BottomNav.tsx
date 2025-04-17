@@ -1,10 +1,8 @@
 import { useState } from "react";
-import {
-  BottomNavigation,
-  BottomNavigationAction,
-  Paper,
-  Fab,
-} from "@mui/material";
+import BottomNavigation from "@mui/material/BottomNavigation";
+import BottomNavigationAction from "@mui/material/BottomNavigationAction";
+import Paper from "@mui/material/Paper";
+import Fab from "@mui/material/Fab";
 import HomeIcon from "@mui/icons-material/Home";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import CalculateIcon from "@mui/icons-material/Calculate";
@@ -53,7 +51,7 @@ const BottomNav = () => {
         <BottomNavigationAction label="Analytics" icon={<BarChartIcon />} />
 
         {/* Centered Add Button */}
-        {location.pathname !== "/" && (
+        {location.pathname !== "/" && location.pathname !== "/login" && (
           <Fab
             aria-label="add"
             onClick={() => navigate("/add")}

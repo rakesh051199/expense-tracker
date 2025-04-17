@@ -37,6 +37,7 @@
     "@aws-sdk/client-dynamodb": "^3.751.0",
     "@aws-sdk/client-ses": "^3.758.0",
     "@aws-sdk/lib-dynamodb": "^3.751.0",
+    "@tanstack/react-query": "^5.73.3",
     "ajv": "^8.17.1",
     "aws-cdk-lib": "^2.185.0",
     "aws-sdk": "^2.1692.0",

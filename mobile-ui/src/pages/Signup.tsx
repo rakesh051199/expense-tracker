@@ -1,15 +1,12 @@
 import { useState } from "react";
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  FormGroup,
-  FormControl,
-  FormHelperText,
-} from "@mui/material";
-import axios from "axios";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import FormGroup from "@mui/material/FormGroup";
+import FormControl from "@mui/material/FormControl";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -17,27 +14,8 @@ export default function Register() {
   const [name, setName] = useState("");
   const navigate = useNavigate();
 
-  // const [errors, setErrors] = useState<any>({});
-
-  // const validateForm = () => {
-  //   const newErrors:any = {};
-
-  //   if (!name.trim()) newErrors.name = "Name is required";
-
-  //   if (!email.trim()) newErrors.email = "Email is required";
-  //   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = "Invalid email format";
-
-  //   if (!password.trim()) newErrors.password = "Password is required";
-  //   else if (password.length < 6) newErrors.password = "Password must be at least 6 characters";
-
-  //   setErrors(newErrors);
-  //   return Object.keys(newErrors).length === 0;
-  // };
-
   const handleRegistration = async (e: any) => {
     e.preventDefault();
-
-    // if (!validateForm()) return; // Stop if validation fails
 
     try {
       const response = await axios.post(

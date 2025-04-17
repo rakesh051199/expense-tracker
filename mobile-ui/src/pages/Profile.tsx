@@ -1,4 +1,9 @@
-import { Box, Typography, Avatar, IconButton } from "@mui/material";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Avatar from "@mui/material/Avatar";
+import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -8,8 +13,6 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import LockIcon from "@mui/icons-material/Lock";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import { useUser } from "../context/UserContext";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 const menuItems = [
   { icon: <DiamondIcon />, label: "Invite Friends" },

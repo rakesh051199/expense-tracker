@@ -113,6 +113,14 @@ async function getBudgets(
       ":userId": userId,
     },
   };
+  if (year && month) {
+    const startDate = `${year}-${month.padStart(2, "0")}-01T00:00:00Z`;
+    const endDate = `${year}-${month.padStart(2, "0")}-31T23:59:59Z`;
+    budgetParams.KeyConditionExpression +=
+      " AND createdAt BETWEEN :startDate AND :endDate";
+    budgetParams.ExpressionAttributeValues[":startDate"] = startDate;
+    budgetParams.ExpressionAttributeValues[":endDate"] = endDate;
+  }
 
   const budgetResult = await queryItems(budgetParams);
   const budgets = budgetResult.Items || [];

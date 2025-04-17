@@ -1,14 +1,13 @@
-import React from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  Typography,
-} from "@mui/material";
+import { useState } from "react";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
 import axios from "axios";
 
 interface BudgetPopupProps {
@@ -34,6 +33,8 @@ export default function BudgetPopup({
   isUpdate,
   setIsUpdate,
 }: BudgetPopupProps) {
+  const [loading, setLoading] = useState(false);
+
   const validateInputs = (): boolean => {
     if (!monthlyLimit || monthlyLimit <= 0 || monthlyLimit > 1000000) {
       alert(
@@ -51,6 +52,8 @@ export default function BudgetPopup({
   const handleBudgetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateInputs()) return;
+
+    setLoading(true);
 
     const payload = {
       category: selectedCategory,
@@ -75,12 +78,16 @@ export default function BudgetPopup({
       console.log("Budget created successfully:", response.data);
     } catch (error) {
       console.error("Error creating budget:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleBudgetUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateInputs()) return;
+
+    setLoading(true);
 
     const payload = {
       category: selectedCategory,
@@ -107,6 +114,8 @@ export default function BudgetPopup({
       console.log("Budget updated successfully:", response.data);
     } catch (error) {
       console.error("Error updating budget:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,7 +157,13 @@ export default function BudgetPopup({
             color="primary"
             onClick={isUpdate ? handleBudgetUpdate : handleBudgetSubmit}
           >
-            {isUpdate ? "UPDATE" : "SET"}
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: "#fff" }} />
+            ) : isUpdate ? (
+              "UPDATE"
+            ) : (
+              "SET"
+            )}
           </Button>
         </Box>
       </DialogActions>

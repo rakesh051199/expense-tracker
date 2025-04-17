@@ -1,16 +1,28 @@
-import { useEffect, useState } from "react";
-import { useUser } from "../context/UserContext";
-import { Box, Card, Typography, Button, IconButton } from "@mui/material";
-import axios from "axios";
-import { LinearProgress } from "@mui/material";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import CircularProgress from "@mui/material/CircularProgress";
+import Tooltip from "@mui/material/Tooltip";
+import LinearProgress from "@mui/material/LinearProgress";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import HomeIcon from "@mui/icons-material/Home";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import OtherHousesIcon from "@mui/icons-material/OtherHouses";
 import EditIcon from "@mui/icons-material/Edit";
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import axios from "axios";
+import { generateMonths } from "../utils/util";
 import BudgetPopup from "../components/BudgetPopup";
-import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 export default function Budget() {
   const { categories, user } = useUser();
@@ -20,28 +32,63 @@ export default function Budget() {
   const [budgets, setBudgets] = useState<any>([]);
   const [isUpdate, setIsUpdate] = useState(false);
   const navigate = useNavigate();
+  const isInitialized = useRef(false);
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-    async function fetchBudgets() {
-      try {
-        const response = await axios.get(
-          `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/budgets?userId=${user?.id}`,
-          { withCredentials: true },
-        );
-        console.log("Budgets fetched successfully", response.data);
-        setBudgets(response.data);
-      } catch (e) {
-        console.error("Budgets fetch failed", e);
-        alert("Budgets fetch failed");
-      }
-    }
+  const months = generateMonths(2023, 2025);
+  const currentDate = new Date();
+  const currentMonthIndex = months.findIndex(
+    (month) =>
+      month.year === currentDate.getFullYear() &&
+      month.month === currentDate.getMonth() + 1,
+  );
+  const [selectedMonthIndex, setSelectedMonthIndex] =
+    useState(currentMonthIndex);
 
-    fetchBudgets();
-  }, [user]);
+  const {
+    data: budgetsData = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["budgets", user?.id, months[selectedMonthIndex]],
+    queryFn: async () => {
+      console.log("Fetching budgets...");
+      const selectedMonth = months[selectedMonthIndex];
+      const response = await axios.get(
+        `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/budgets?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
+        { withCredentials: true },
+      );
+      return response.data;
+    },
+    enabled: !!user?.id,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const handlePrevMonth = () => {
+    setSelectedMonthIndex((prev) =>
+      prev === months.length - 1 ? prev : prev + 1,
+    );
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
+  };
+
+  if (isError) {
+    console.error("Budgets fetch failed:", error);
+    toast.error("Failed to fetch budgets. Please try again.", {
+      position: "top-right",
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+  }
 
   const categoryIcons: { [key: string]: any } = {
     Shopping: <ShoppingCartIcon sx={{ color: "#3F8782" }} />,
@@ -50,6 +97,25 @@ export default function Budget() {
     Transportation: <DirectionsCarIcon sx={{ color: "#3F8782" }} />,
     Other: <OtherHousesIcon sx={{ color: "#3F8782" }} />,
   };
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    console.log("Budgets fetched successfully:", budgetsData);
+    if (!isInitialized.current && !isLoading) {
+      setBudgets(budgetsData);
+      isInitialized.current = true;
+    }
+  }, [budgetsData]);
+
+  useEffect(() => {
+    isInitialized.current = false;
+    setBudgets([]);
+  }, [selectedMonthIndex]);
 
   return (
     <Box
@@ -61,6 +127,26 @@ export default function Budget() {
         padding: 2,
       }}
     >
+      {/* Month Navigator */}
+      <Box display="flex" alignItems="center" justifyContent="center" my={3}>
+        <IconButton
+          onClick={handlePrevMonth}
+          disabled={selectedMonthIndex === months.length - 1}
+        >
+          <ArrowBackIosIcon />
+        </IconButton>
+        <Typography variant="h6" fontWeight={600} mx={2}>
+          {months[selectedMonthIndex].label}
+        </Typography>
+        <IconButton
+          onClick={handleNextMonth}
+          disabled={selectedMonthIndex === 0}
+        >
+          <ArrowForwardIosIcon />
+        </IconButton>
+      </Box>
+
+      <ToastContainer />
       <Box>
         <Typography
           variant="h4"
@@ -71,6 +157,18 @@ export default function Budget() {
         >
           Budgeted Categories
         </Typography>
+        {isLoading && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: 200,
+            }}
+          >
+            <CircularProgress sx={{ color: "#2A7C76" }} />
+          </Box>
+        )}
         {budgets.map((budget: any, index: number) => {
           const remaining = budget.monthlyLimit - budget.totalSpent;
           const progress = Math.min(
@@ -82,8 +180,7 @@ export default function Budget() {
             <Card
               key={index}
               sx={{
-                width: "100%",
-                maxWidth: "400px",
+                width: { xs: "100%", sm: "90%", md: "75%" },
                 margin: "8px auto",
                 padding: 2,
                 borderRadius: 2,
@@ -101,15 +198,17 @@ export default function Budget() {
                   {budget.category}
                 </Typography>
                 <IconButton>
-                  <EditIcon
-                    sx={{ color: "#3F8782" }}
-                    onClick={() => {
-                      setIsOpen(true);
-                      setSelectedCategory(budget.category);
-                      setMonthlyLimit(budget.monthlyLimit);
-                      setIsUpdate(true);
-                    }}
-                  />
+                  <Tooltip title="Edit Budget">
+                    <EditIcon
+                      sx={{ color: "#3F8782" }}
+                      onClick={() => {
+                        setIsOpen(true);
+                        setSelectedCategory(budget.category);
+                        setMonthlyLimit(budget.monthlyLimit);
+                        setIsUpdate(true);
+                      }}
+                    />
+                  </Tooltip>
                 </IconButton>
               </Box>
               <Box>
@@ -136,7 +235,9 @@ export default function Budget() {
                   borderRadius: 4,
                   backgroundColor: "#E0E0E0",
                   "& .MuiLinearProgress-bar": {
-                    backgroundColor: progress > 80 ? "#FF6F61" : "#3F8782",
+                    background: `linear-gradient(to right, ${
+                      progress > 80 ? "#FF6F61" : "#3F8782"
+                    }, #2A7C76)`,
                   },
                 }}
               />
@@ -165,9 +266,14 @@ export default function Budget() {
               justifyContent: "space-between",
             }}
           >
-            <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
-              {category}
-            </Typography>
+            <Box display="flex" alignItems="center" gap={2}>
+              {categoryIcons[category] || (
+                <OtherHousesIcon sx={{ color: "#3F8782" }} />
+              )}
+              <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
+                {category}
+              </Typography>
+            </Box>
             <Button
               variant="contained"
               size="small"

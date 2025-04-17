@@ -23,16 +23,6 @@ export const UserProvider = ({ children }: any) => {
   });
   const [categories, setCategories] = useState({ income: [], expense: [] });
 
-  useEffect(() => {
-    console.log("user from context 1st block", user);
-    if (user) {
-      localStorage.setItem("userInfo", JSON.stringify(user));
-    } else {
-      console.log("coming to else block");
-      localStorage.removeItem("userInfo");
-    }
-  }, [user]);
-
   const checkSession = async () => {
     try {
       await axios.get(
@@ -43,6 +33,12 @@ export const UserProvider = ({ children }: any) => {
       console.error("Failed to fetch session:", error);
       logout(); // Stop polling if session check fails
     }
+  };
+
+  const logout = () => {
+    console.log("coming to logout block");
+    localStorage.removeItem("userInfo");
+    setUser(null);
   };
 
   useEffect(() => {
@@ -69,11 +65,15 @@ export const UserProvider = ({ children }: any) => {
     fetchCategories();
   }, []);
 
-  const logout = () => {
-    console.log("coming to logout block");
-    localStorage.removeItem("userInfo");
-    setUser(null);
-  };
+  useEffect(() => {
+    console.log("user from context 1st block", user);
+    if (user) {
+      localStorage.setItem("userInfo", JSON.stringify(user));
+    } else {
+      console.log("coming to else block");
+      localStorage.removeItem("userInfo");
+    }
+  }, [user]);
 
   return (
     <UserContext.Provider value={{ user, setUser, logout, categories }}>
