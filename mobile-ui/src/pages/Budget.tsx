@@ -114,7 +114,6 @@ export default function Budget() {
 
   useEffect(() => {
     isInitialized.current = false;
-    setBudgets([]);
   }, [selectedMonthIndex]);
 
   return (
