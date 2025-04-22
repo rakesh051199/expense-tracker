@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -20,6 +20,7 @@ interface BudgetPopupProps {
   setBudgets: (budgets: any) => void;
   isUpdate: boolean;
   setIsUpdate: (update: boolean) => void;
+  categoryIcon: any;
 }
 
 export default function BudgetPopup({
@@ -32,6 +33,7 @@ export default function BudgetPopup({
   setBudgets,
   isUpdate,
   setIsUpdate,
+  categoryIcon,
 }: BudgetPopupProps) {
   const [loading, setLoading] = useState(false);
 
@@ -63,7 +65,7 @@ export default function BudgetPopup({
 
     try {
       const response = await axios.post(
-        "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/budgets",
+        "https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/budgets",
         payload,
         { withCredentials: true },
       );
@@ -97,7 +99,7 @@ export default function BudgetPopup({
 
     try {
       const response = await axios.patch(
-        "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/budgets",
+        "https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/budgets",
         payload,
         { withCredentials: true },
       );
@@ -120,22 +122,47 @@ export default function BudgetPopup({
   };
 
   return (
-    <Dialog open={isOpen} onClose={() => setIsOpen(false)}>
-      <DialogTitle textAlign="center">
+    <Dialog
+      open={isOpen}
+      onClose={() => setIsOpen(false)}
+      sx={{
+        "& .MuiDialog-paper": {
+          borderRadius: "16px", // Increase border radius
+          width: { xs: "90%", sm: "500px" }, // Adjust width for responsiveness
+          padding: "16px", // Add padding around the popup content
+        },
+      }}
+    >
+      <DialogTitle textAlign="center" sx={{ marginBottom: "16px" }}>
         {isUpdate ? "Update Budget" : "Set Budget"}
       </DialogTitle>
-      <DialogContent>
-        <Box mb={2}>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        {/* Category Icon and Name */}
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          gap={2}
+          sx={{
+            border: "1px solid #ccc", // Add a border
+            borderRadius: "8px", // Add rounded corners
+            padding: "8px 16px", // Add padding
+            backgroundColor: "#f9f9f9", // Optional: Add a background color
+          }}
+        >
+          {categoryIcon}
           <Typography variant="h6" textAlign="center">
             {selectedCategory}
           </Typography>
         </Box>
+
+        {/* Monthly Limit Input */}
         <Box display="flex" alignItems="center" gap={1}>
           <Typography>Limit:</Typography>
           <TextField
             fullWidth
             placeholder="0"
-            type="number"
+            inputMode="numeric"
             value={monthlyLimit || ""}
             onChange={(e) => setMonthlyLimit(Number(e.target.value))}
           />
@@ -149,6 +176,7 @@ export default function BudgetPopup({
               setIsOpen(false);
               setIsUpdate(false);
             }}
+            sx={{ color: "#2A7C76", borderColor: "#2A7C76" }}
           >
             CANCEL
           </Button>
@@ -156,6 +184,7 @@ export default function BudgetPopup({
             variant="contained"
             color="primary"
             onClick={isUpdate ? handleBudgetUpdate : handleBudgetSubmit}
+            sx={{ color: "#fff", backgroundColor: "#2A7C76" }}
           >
             {loading ? (
               <CircularProgress size={24} sx={{ color: "#fff" }} />

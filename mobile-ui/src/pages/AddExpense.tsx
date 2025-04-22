@@ -74,7 +74,7 @@ export default function AddExpense() {
       sx={{
         maxWidth: 480,
         margin: "auto",
-        bgcolor: "#F9F9F9",
+        backgroundColor: "#EEF8F7",
         minHeight: "100vh",
       }}
     >

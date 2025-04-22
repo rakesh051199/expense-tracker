@@ -102,7 +102,7 @@ export default function Home() {
         padding: "16px",
         maxWidth: "480px",
         margin: "auto",
-        backgroundColor: "#F9F9F9",
+        backgroundColor: "#EEF8F7",
         marginBottom: "56px",
         height: "auto",
         fontFamily: "Roboto, sans",
@@ -204,7 +204,7 @@ export default function Home() {
             height: 200,
           }}
         >
-          <CircularProgress sx={{ color: "#fff" }} />
+          <CircularProgress sx={{ color: "#2A7C76" }} />
         </Box>
       )}
 

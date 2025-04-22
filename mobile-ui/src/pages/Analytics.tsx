@@ -8,14 +8,16 @@ import { useQuery } from "@tanstack/react-query";
 import { generateMonths } from "../utils/util";
 import { useUser } from "../context/UserContext";
 import axios from "axios";
-import { IconButton } from "@mui/material";
+import { CircularProgress, IconButton } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 function Analytics() {
   const { user }: any = useUser();
   const months = generateMonths(2023, 2025);
+  const navigate = useNavigate();
 
   const currentDate = new Date();
   const currentMonthIndex = months.findIndex(
@@ -43,7 +45,7 @@ function Analytics() {
     queryFn: async () => {
       const selectedMonth = months[selectedMonthIndex];
       const response = await axios.get(
-        `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
+        `https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
         { withCredentials: true },
       );
       return response.data;
@@ -68,13 +70,9 @@ function Analytics() {
     });
   }
 
-  console.log("data", data);
-
   const transactions = Array.isArray(data?.transactions)
     ? data.transactions
     : [];
-
-  console.log("transactions", transactions);
 
   // Helper function to group transactions by category
   const groupByCategory = (transactions: any[], totalAmount: any) => {
@@ -112,18 +110,17 @@ function Analytics() {
   const totalExpense = data?.totalExpense || 0;
 
   const expenseData = groupByCategory(expenseTransactions, totalExpense);
-  console.log("expenseData", expenseData);
   const incomeData = groupByCategory(incomeTransactions, totalIncome);
-  console.log("incomeData", incomeData);
 
   const renderLegend = (data: any[]) => (
     <Box
       display="flex"
       flexDirection="column"
-      alignItems="center"
+      alignItems={{ xs: "center", sm: "flex-start" }}
       sx={{
         mt: { xs: 2, sm: 0 },
         ml: { xs: 0, sm: 4 },
+        width: { xs: "100%", sm: "auto" },
       }}
     >
       {data.map((item) => (
@@ -137,15 +134,11 @@ function Analytics() {
               mr: 1,
             }}
           />
-          <Typography variant="body1">{item.name}</Typography>
+          <Typography variant="body2">{item.name}</Typography>
         </Box>
       ))}
     </Box>
   );
-
-  useEffect(() => {
-    setSelectedMonthIndex(currentMonthIndex);
-  }, [currentMonthIndex]);
 
   const handlePrevMonth = () => {
     setSelectedMonthIndex((prev) =>
@@ -156,6 +149,16 @@ function Analytics() {
   const handleNextMonth = () => {
     setSelectedMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
   };
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    setSelectedMonthIndex(currentMonthIndex);
+  }, [currentMonthIndex]);
 
   return (
     <Box sx={{ backgroundColor: "#EEF8F7", padding: 2 }}>
@@ -201,91 +204,81 @@ function Analytics() {
         </Select>
       </Box>
 
-      {selectedView === "Expense overview" && (
+      {isLoading && (
         <Box
-          display="flex"
-          flexDirection={{ xs: "column", sm: "row" }}
-          alignItems="center"
-          justifyContent="center"
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: 200,
+          }}
         >
-          <Box
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            sx={{ width: { xs: "100%", sm: "50%" } }}
-          >
-            <Typography
-              variant="h5"
-              color="#3F8782"
-              fontWeight="bold"
-              sx={{ mb: 2 }}
-            >
-              Expense Overview
-            </Typography>
-            <PieChart width={300} height={300}>
-              <Tooltip />
-              <Pie
-                data={expenseData}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                innerRadius={60}
-                label={({ name, value }) => `${name}: ${value}`}
-                isAnimationActive={false}
-              >
-                {expenseData.map((entry, index) => (
-                  <Cell key={`slice-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </Box>
-          {renderLegend(expenseData)}
+          <CircularProgress sx={{ color: "#2A7C76" }} />
         </Box>
       )}
 
-      {selectedView === "Income overview" && (
+      {transactions.length === 0 && !isLoading && (
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          textAlign={"center"}
+          sx={{ mt: 2 }}
+        >
+          No Transactions available
+        </Typography>
+      )}
+
+      <Box
+        display="flex"
+        flexDirection={{ xs: "column", sm: "row" }}
+        justifyContent="center"
+        alignItems="center"
+        sx={{ mt: 4 }}
+      >
         <Box
           display="flex"
-          flexDirection={{ xs: "column", sm: "row" }}
+          flexDirection="column"
           alignItems="center"
           justifyContent="center"
+          sx={{ maxWidth: 350 }}
         >
-          <Box
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            sx={{ width: { xs: "100%", sm: "50%" } }}
+          <Typography
+            variant="h5"
+            color="#3F8782"
+            fontWeight="bold"
+            sx={{ mb: 2 }}
           >
-            <Typography
-              variant="h5"
-              color="#3F8782"
-              fontWeight="bold"
-              sx={{ mb: 2 }}
+            {selectedView === "Expense overview"
+              ? "Expense Overview"
+              : "Income Overview"}
+          </Typography>
+          <PieChart width={300} height={300}>
+            <Tooltip />
+            <Pie
+              data={
+                selectedView === "Expense overview" ? expenseData : incomeData
+              }
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              outerRadius={100}
+              innerRadius={60}
+              label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+              isAnimationActive={false}
             >
-              Income Overview
-            </Typography>
-            <PieChart width={300} height={300}>
-              <Tooltip />
-              <Pie
-                data={incomeData}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                innerRadius={60}
-                label={({ name, value }) => `${name}: ${value}`}
-                isAnimationActive={false}
-              >
-                {incomeData.map((entry, index) => (
-                  <Cell key={`slice-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </Box>
-          {renderLegend(incomeData)}
+              {(selectedView === "Expense overview"
+                ? expenseData
+                : incomeData
+              ).map((entry, index) => (
+                <Cell key={`slice-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+          </PieChart>
         </Box>
-      )}
+        {renderLegend(
+          selectedView === "Expense overview" ? expenseData : incomeData,
+        )}
+      </Box>
     </Box>
   );
 }

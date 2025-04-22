@@ -20,7 +20,12 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <UserProvider>
-          <Box sx={{ pb: "24px" /* Adjust based on BottomNav height */ }}>
+          <Box
+            sx={{
+              pb: "32px" /* Adjust based on BottomNav height */,
+              backgroundColor: "#EEF8F7",
+            }}
+          >
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />

@@ -124,6 +124,8 @@ export default function Budget() {
         gap: 2,
         alignItems: "center",
         padding: 2,
+        mb: 2,
+        backgroundColor: "#EEF8F7",
       }}
     >
       <Box display="flex" alignItems="center" justifyContent="center" my={3}>
@@ -296,6 +298,11 @@ export default function Budget() {
         setBudgets={setBudgets}
         isUpdate={isUpdate}
         setIsUpdate={setIsUpdate}
+        categoryIcon={
+          categoryIcons[selectedCategory] || (
+            <OtherHousesIcon sx={{ color: "#3F8782" }} />
+          )
+        }
       />
     </Box>
   );

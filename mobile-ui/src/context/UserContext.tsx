@@ -26,7 +26,7 @@ export const UserProvider = ({ children }: any) => {
   const checkSession = async () => {
     try {
       await axios.get(
-        "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/session",
+        "https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/session",
         { withCredentials: true }, // Ensure cookies are sent for session validation
       );
     } catch (error) {
