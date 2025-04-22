@@ -26,8 +26,8 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      tableName: "MoneyTrackingTableV1",
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      tableName: "MoneyTrackingTableV2",
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     moneyTrackingTable.addGlobalSecondaryIndex({
@@ -99,7 +99,7 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, "MoneyTrackerAPI", {
       restApiName: "MoneyTrackerAPI",
       defaultCorsPreflightOptions: {
-        allowOrigins: ["https://dlujnv9c6ivls.cloudfront.net"], // Explicit origin
+        allowOrigins: ["https://d24248z4qoc5x0.cloudfront.net"],
         allowMethods: apigateway.Cors.ALL_METHODS, // Allow all HTTP methods
         allowHeaders: [
           "Authorization",
@@ -163,6 +163,7 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       bucketName: "my-money-app-bucket",
       removalPolicy: RemovalPolicy.DESTROY,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      autoDeleteObjects: true, // Automatically delete objects when the bucket is destroyed
     });
 
     const originAccessIdentity = new OriginAccessIdentity(this, "MyOAI");
@@ -185,11 +186,30 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       ],
     });
 
+    transactionsLambda.addEnvironment(
+      "CLOUD_FRONT_URL",
+      `https://${distribution.distributionDomainName}`,
+    );
+
+    budgetLambda.addEnvironment(
+      "CLOUD_FRONT_URL",
+      `https://${distribution.distributionDomainName}`,
+    );
+    usersLambda.addEnvironment(
+      "CLOUD_FRONT_URL",
+      `https://${distribution.distributionDomainName}`,
+    );
+    sessionLambda.addEnvironment(
+      "CLOUD_FRONT_URL",
+      `https://${distribution.distributionDomainName}`,
+    );
+
     new BucketDeployment(this, "DeployMyMoneyAppBucket", {
       sources: [Source.asset("./mobile-ui/build")],
       destinationBucket: myMoneyAppBucket,
       distribution,
       distributionPaths: ["/*"],
+      memoryLimit: 1024, // Increase memory to 1 GB
     });
 
     // ✅ S3 Bucket for categories.json
@@ -198,10 +218,11 @@ export class MoneyTrackingSystemStack extends cdk.Stack {
       publicReadAccess: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       blockPublicAccess: BlockPublicAccess.BLOCK_ACLS,
+      autoDeleteObjects: true, // Automatically delete objects when the bucket is destroyed
       cors: [
         {
           allowedMethods: [HttpMethods.GET],
-          allowedOrigins: ["https://dlujnv9c6ivls.cloudfront.net"],
+          allowedOrigins: [`https://${distribution.distributionDomainName}`],
           allowedHeaders: ["*"],
         },
       ],

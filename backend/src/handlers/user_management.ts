@@ -7,6 +7,7 @@ import { putItem, queryItems } from "../utils/db-client";
 // Ensure environment variables are set
 const TableName = process.env.TRANSACTIONS_TABLE;
 const JWT_SECRET = process.env.JWT_SECRET;
+const CLOUD_FRONT_URL = process.env.CLOUD_FRONT_URL!;
 
 if (!TableName || !JWT_SECRET) {
   throw new Error("Missing required environment variables");
@@ -72,7 +73,7 @@ async function registerUser(
     return {
       statusCode: 201,
       headers: {
-        "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net", // Allow your frontend
+        "Access-Control-Allow-Origin": CLOUD_FRONT_URL, // Allow your frontend
         "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
@@ -124,7 +125,7 @@ async function loginUser(
     statusCode: 200,
     headers: {
       "Set-Cookie": `authToken=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=900`,
-      "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net", // Allow your frontend
+      "Access-Control-Allow-Origin": CLOUD_FRONT_URL, // Allow your frontend
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",

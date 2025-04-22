@@ -18,7 +18,7 @@ export default function Login() {
 
     try {
       const response = await axios.post(
-        "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/users/login",
+        "https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/users/login",
         { email, password },
         { withCredentials: true },
       );

@@ -19,7 +19,7 @@ export default function Register() {
 
     try {
       const response = await axios.post(
-        "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/users/register",
+        "https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/users/register",
         { name, email, password },
       );
       navigate("/login");

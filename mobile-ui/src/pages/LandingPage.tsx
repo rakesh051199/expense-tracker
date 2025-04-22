@@ -16,7 +16,6 @@ export default function LandingPage() {
         alignItems: "center",
         backgroundColor: "#EEF8F7",
         padding: "16px",
-        marginBottom: "56px",
       }}
     >
       {/* Header Image */}

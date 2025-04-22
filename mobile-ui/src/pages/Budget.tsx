@@ -55,7 +55,7 @@ export default function Budget() {
       console.log("Fetching budgets...");
       const selectedMonth = months[selectedMonthIndex];
       const response = await axios.get(
-        `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/budgets?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
+        `https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/budgets?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
         { withCredentials: true },
       );
       return response.data;
@@ -126,7 +126,6 @@ export default function Budget() {
         padding: 2,
       }}
     >
-      {/* Month Navigator */}
       <Box display="flex" alignItems="center" justifyContent="center" my={3}>
         <IconButton
           onClick={handlePrevMonth}

@@ -14,7 +14,7 @@ const TableName = process.env.TRANSACTIONS_TABLE || "";
 
 // Define global headers
 const GLOBAL_HEADERS = {
-  "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+  "Access-Control-Allow-Origin": process.env.CLOUD_FRONT_URL!,
   "Access-Control-Allow-Credentials": "true",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",

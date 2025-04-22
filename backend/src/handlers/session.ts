@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import jwt from "jsonwebtoken";
 
 const SECRET_KEY = process.env.JWT_SECRET!;
+const CLOUD_FRONT_URL = process.env.CLOUD_FRONT_URL!;
 
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -13,7 +14,7 @@ export const handler = async (
       return {
         statusCode: 401,
         headers: {
-          "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+          "Access-Control-Allow-Origin": CLOUD_FRONT_URL,
           "Access-Control-Allow-Credentials": "true",
         },
         body: JSON.stringify({ message: "Unauthorized: No cookie found" }),
@@ -30,7 +31,7 @@ export const handler = async (
       return {
         statusCode: 401,
         headers: {
-          "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+          "Access-Control-Allow-Origin": CLOUD_FRONT_URL,
           "Access-Control-Allow-Credentials": "true",
         },
         body: JSON.stringify({ message: "Unauthorized: No authToken found" }),
@@ -45,7 +46,7 @@ export const handler = async (
       return {
         statusCode: 401,
         headers: {
-          "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+          "Access-Control-Allow-Origin": CLOUD_FRONT_URL,
           "Access-Control-Allow-Credentials": "true",
         },
         body: JSON.stringify({ message: "Session expired" }),
@@ -55,7 +56,7 @@ export const handler = async (
     return {
       statusCode: 200,
       headers: {
-        "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+        "Access-Control-Allow-Origin": CLOUD_FRONT_URL,
         "Access-Control-Allow-Credentials": "true",
       },
       body: JSON.stringify({
@@ -68,7 +69,7 @@ export const handler = async (
     return {
       statusCode: 401,
       headers: {
-        "Access-Control-Allow-Origin": "https://dlujnv9c6ivls.cloudfront.net",
+        "Access-Control-Allow-Origin": CLOUD_FRONT_URL,
         "Access-Control-Allow-Credentials": "true",
       },
       body: JSON.stringify({ message: "Invalid token" }),

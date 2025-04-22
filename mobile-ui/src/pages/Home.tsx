@@ -48,7 +48,7 @@ export default function Home() {
     queryFn: async () => {
       const selectedMonth = months[selectedMonthIndex];
       const response = await axios.get(
-        `https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
+        `https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
         { withCredentials: true },
       );
       return response.data;

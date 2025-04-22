@@ -5,6 +5,7 @@ import Signup from "./pages//Signup";
 import Profile from "./pages//Profile";
 import Home from "./pages/Home";
 import AddExpense from "./pages/AddExpense";
+import Analytics from "./pages/Analytics";
 import BottomNav from "./components/BottomNav";
 import "./App.css";
 import { UserProvider } from "./context/UserContext";
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/home" element={<Home />} />
               <Route path="/add" element={<AddExpense />} />
               <Route path="/budget" element={<Budget />} />
+              <Route path="/analytics" element={<Analytics />} />
             </Routes>
           </Box>
           <BottomNav />

@@ -40,7 +40,7 @@ export default function AddExpense() {
     form.userId = user.id;
     try {
       await axios.post(
-        "https://cpdoznq25i.execute-api.us-west-2.amazonaws.com/prod/transactions",
+        "https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/transactions",
         form,
         { withCredentials: true },
       );
