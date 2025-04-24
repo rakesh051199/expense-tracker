@@ -44,7 +44,10 @@ export default function AddExpense() {
         form,
         { withCredentials: true },
       );
-      queryClient.invalidateQueries(["transactions", user?.id] as any); // Invalidate the transactions query to refetch data
+      queryClient.invalidateQueries({
+        queryKey: ["transactions", user?.id], 
+        exact: false, 
+      });
       navigate("/home");
     } catch (e) {
       console.error("Transaction addition failed", e);
@@ -109,7 +112,7 @@ export default function AddExpense() {
               setForm((prev) => ({
                 ...prev,
                 type,
-                category: categories[type][0],
+                category: categories[type][0]["name"],
                 amount: "",
               }))
             }
@@ -136,8 +139,8 @@ export default function AddExpense() {
             required
           >
             {categories[form.type].map((option: any) => (
-              <MenuItem key={option} value={option}>
-                {option}
+              <MenuItem key={option.name} value={option.name}>
+                {option.name}
               </MenuItem>
             ))}
           </TextField>

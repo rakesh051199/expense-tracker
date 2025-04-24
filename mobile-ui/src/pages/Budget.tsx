@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Typography from "@mui/material/Typography";
@@ -15,17 +14,16 @@ import HomeIcon from "@mui/icons-material/Home";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import OtherHousesIcon from "@mui/icons-material/OtherHouses";
 import EditIcon from "@mui/icons-material/Edit";
-import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import axios from "axios";
 import { generateMonths } from "../utils/util";
 import BudgetPopup from "../components/BudgetPopup";
 import { useUser } from "../context/UserContext";
+import MonthSelector from "./MonthSelector";
+import { useBudgets } from "../api/hooks";
 
 export default function Budget() {
-  const { categories, user } = useUser();
+  const { categories, user }: any = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [monthlyLimit, setMonthlyLimit] = useState<undefined | number>();
@@ -45,37 +43,11 @@ export default function Budget() {
     useState(currentMonthIndex);
 
   const {
-    data: budgetsData = [],
+    data: budgetsData,
     isLoading,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["budgets", user?.id, months[selectedMonthIndex]],
-    queryFn: async () => {
-      console.log("Fetching budgets...");
-      const selectedMonth = months[selectedMonthIndex];
-      const response = await axios.get(
-        `https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/budgets?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
-        { withCredentials: true },
-      );
-      return response.data;
-    },
-    enabled: !!user?.id,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const handlePrevMonth = () => {
-    setSelectedMonthIndex((prev) =>
-      prev === months.length - 1 ? prev : prev + 1,
-    );
-  };
-
-  const handleNextMonth = () => {
-    setSelectedMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
-  };
+  } = useBudgets(user?.id, months[selectedMonthIndex]);
 
   if (isError) {
     console.error("Budgets fetch failed:", error);
@@ -128,23 +100,11 @@ export default function Budget() {
         backgroundColor: "#EEF8F7",
       }}
     >
-      <Box display="flex" alignItems="center" justifyContent="center" my={3}>
-        <IconButton
-          onClick={handlePrevMonth}
-          disabled={selectedMonthIndex === months.length - 1}
-        >
-          <ArrowBackIosIcon />
-        </IconButton>
-        <Typography variant="h6" fontWeight={600} mx={2}>
-          {months[selectedMonthIndex].label}
-        </Typography>
-        <IconButton
-          onClick={handleNextMonth}
-          disabled={selectedMonthIndex === 0}
-        >
-          <ArrowForwardIosIcon />
-        </IconButton>
-      </Box>
+      <MonthSelector
+        months={months}
+        selectedMonthIndex={selectedMonthIndex}
+        setSelectedMonthIndex={setSelectedMonthIndex}
+      />
 
       <ToastContainer />
       <Box>
@@ -251,7 +211,9 @@ export default function Budget() {
       </Typography>
       {categories.expense
         .filter((category: any) => {
-          return !budgets.some((budget: any) => budget.category === category);
+          return !budgets.some(
+            (budget: any) => budget.category === category.name,
+          );
         })
         .map((category: any, index: number) => (
           <Card
@@ -267,11 +229,11 @@ export default function Budget() {
             }}
           >
             <Box display="flex" alignItems="center" gap={2}>
-              {categoryIcons[category] || (
+              {categoryIcons[category.name] || (
                 <OtherHousesIcon sx={{ color: "#3F8782" }} />
               )}
               <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
-                {category}
+                {category.name}
               </Typography>
             </Box>
             <Button
@@ -280,7 +242,7 @@ export default function Budget() {
               sx={{ ml: 2, backgroundColor: "#2A7C76" }}
               onClick={() => {
                 setIsOpen(true);
-                setSelectedCategory(category);
+                setSelectedCategory(category.name);
                 setMonthlyLimit(undefined);
               }}
             >

@@ -1,7 +1,8 @@
 import axios from "axios";
 import logger from "./logger";
+import { Category } from "aws-sdk/clients/cloudformation";
 
-let categories: any = { income: [], expense: [] }; // Default empty structure
+let categories: any = { income: [], expense: [] };
 
 // Function to load categories before exporting schemas
 async function loadCategories() {
@@ -27,7 +28,10 @@ export const transactionSchema = initializeCategories.then(() => ({
     amount: { type: "number", minimum: 0.01 }, // Must be a positive number
     category: {
       type: "string",
-      enum: [...categories.income, ...categories.expense], // Use populated categories
+      enum: [
+        ...categories.income.map((category: any) => category.name),
+        ...categories.expense.map((category: any) => category.name),
+      ], // Use populated categories
     },
     description: { type: "string", maxLength: 255 }, // Optional field
     type: { type: "string", enum: ["expense", "income", "transfer"] },
@@ -45,7 +49,7 @@ export const budgetSchema = initializeCategories.then(() => ({
     monthlyLimit: { type: "number", minimum: 0.01 }, // Must be a positive number
     category: {
       type: "string",
-      enum: categories.expense, // Use populated categories
+      enum: categories.expense.map((category: any) => category.name), // Use populated categories
     },
     description: { type: "string", maxLength: 255 }, // Optional field
   },

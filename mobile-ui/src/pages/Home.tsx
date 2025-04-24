@@ -1,20 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import CircularProgress from "@mui/material/CircularProgress";
-import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import axios from "axios";
 import { useUser } from "../context/UserContext";
 import { generateMonths } from "../utils/util";
+import MonthSelector from "./MonthSelector";
+import { useTransactions } from "../api/hooks";
 
 const InfoCard = ({ icon, label, amount, color }: any) => (
   <Stack alignItems="center" spacing={0.5}>
@@ -43,22 +40,10 @@ export default function Home() {
   const [selectedMonthIndex, setSelectedMonthIndex] =
     useState(currentMonthIndex);
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["transactions", user?.id, months[selectedMonthIndex]],
-    queryFn: async () => {
-      const selectedMonth = months[selectedMonthIndex];
-      const response = await axios.get(
-        `https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${user?.id}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
-        { withCredentials: true },
-      );
-      return response.data;
-    },
-    enabled: !!user?.id,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-    staleTime: 1000 * 60 * 5,
-  });
+  const { data, isLoading, isError, error } = useTransactions(
+    user?.id,
+    months[selectedMonthIndex],
+  );
 
   if (isError) {
     console.error("Transactions fetch failed:", error);
@@ -79,16 +64,6 @@ export default function Home() {
   const totalIncome = data?.totalIncome || 0;
   const totalExpense = data?.totalExpense || 0;
   const totalBalance = totalIncome - totalExpense;
-
-  const handlePrevMonth = () => {
-    setSelectedMonthIndex((prev) =>
-      prev === months.length - 1 ? prev : prev + 1,
-    );
-  };
-
-  const handleNextMonth = () => {
-    setSelectedMonthIndex((prev) => (prev === 0 ? prev : prev - 1));
-  };
 
   useEffect(() => {
     if (!user) {
@@ -177,23 +152,11 @@ export default function Home() {
         </Box>
       </Box>
 
-      <Box display="flex" alignItems="center" justifyContent="center" my={3}>
-        <IconButton
-          onClick={handlePrevMonth}
-          disabled={selectedMonthIndex === months.length - 1}
-        >
-          <ArrowBackIosIcon />
-        </IconButton>
-        <Typography variant="h6" fontWeight={600} mx={2}>
-          {months[selectedMonthIndex].label}
-        </Typography>
-        <IconButton
-          onClick={handleNextMonth}
-          disabled={selectedMonthIndex === 0}
-        >
-          <ArrowForwardIosIcon />
-        </IconButton>
-      </Box>
+      <MonthSelector
+        months={months}
+        selectedMonthIndex={selectedMonthIndex}
+        setSelectedMonthIndex={setSelectedMonthIndex}
+      />
 
       {isLoading && (
         <Box
@@ -208,7 +171,7 @@ export default function Home() {
         </Box>
       )}
 
-      {transactions.length === 0 ? (
+      {!isLoading && transactions.length === 0 ? (
         <Typography variant="body1" color="text.secondary" textAlign={"center"}>
           No Transactions available
         </Typography>
