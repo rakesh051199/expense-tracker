@@ -9,9 +9,6 @@ function useTransactions(userId: string, selectedMonth: any) {
         `https://6m1sem7dp0.execute-api.us-west-2.amazonaws.com/prod/transactions?userId=${userId}&year=${selectedMonth.year}&month=${selectedMonth.month}`,
         {
           withCredentials: true,
-          headers: {
-            "x-api-key": "Fh22o86IuZqSCI0YmaQB3H9lb0Wpt7V66DFOZGj1",
-          },
         },
       );
       return response.data;
